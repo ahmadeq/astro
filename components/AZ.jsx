@@ -11,7 +11,6 @@ export default function Home() {
   const [commandTimeout, setCommandTimeout] = useState(null);
   const [astroDetected, setAstroDetected] = useState(false);
   const [command , setCommand] = useState("");
-  const [enable, setEnable] = useState(true);
 
   useEffect(() => {
     if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
@@ -84,10 +83,10 @@ export default function Home() {
         setCommand(action + " " + subject)
         console.log(command)
         if (command === 'turn on the light') {
+          console.log("turn on the light")
           playAudio("sorry");
           executeCommand(`http://192.168.1.12/on`);
         } else if (command === 'turn off the light') {
-          playAudio("sorry");
           executeCommand(`http://192.168.1.12/off`);
         } else if (command === 'run level 1' || command === 'start level one') {
           executeCommand(`http://192.168.1.12/levelOne`);
@@ -158,17 +157,6 @@ export default function Home() {
     resetTranscript();
   };
 
-  const enableAudio = () => {
-    const silentAudio = new Audio('/audio/sorry.mp3'); 
-    silentAudio.play().then(() => {
-      setAudioEnabled(true);
-      console.log('Audio enabled by user interaction.');
-    }).catch(error => {
-      console.error('Error enabling audio:', error);
-    });
-    setEnable(false);
-  };
-
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-[#0a192f] text-[#ccd6f6]">
       <div className="max-w-md w-full space-y-4">
@@ -193,13 +181,6 @@ export default function Home() {
           >
             Reset
           </Button>
-          {enable &&  <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={enableAudio}
-          >
-            Enable Audio
-          </Button>}
-         
         </div>
         <Textarea
           className="h-48 p-4 bg-[#112240] text-[#ccd6f6] rounded-md border border-[#64ffda] focus:border-[#64ffda] focus:ring-1 focus:ring-[#64ffda]"
