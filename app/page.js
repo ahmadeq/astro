@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import AZ from '@/components/AZ';
 
 export default function Home() {
   const { transcript, resetTranscript, listening } = useSpeechRecognition();
@@ -12,6 +13,8 @@ export default function Home() {
   const [astroDetected, setAstroDetected] = useState(false);
   const [command , setCommand] = useState("");
   const [enable, setEnable] = useState(true);
+  const [audioFile, setAudioFile] = useState(null);
+  const [counter , setCounter] = useState(0); 
 
   useEffect(() => {
     if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
@@ -51,13 +54,39 @@ export default function Home() {
     return { action: detectedAction, subject: detectedSubject };
   };
 
-  
   const playAudio = (fileName) => {
-    const audio = new Audio(`/audio/${fileName}.mp3`);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-    });
+    setAudioFile(fileName);
+    setCounter(counter + 1);
+    if (typeof window !== 'undefined') { // Check if we're in the browser
+      const audio = new Audio(`/audio/${fileName}.mp3`);
+      // audio.play().catch(error => {
+      //   console.error('Error playing audio:', error);
+      // });
+  
+      // Analyze the audio file
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 32;
+  
+      const source = audioContext.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+  
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  
+      audio.addEventListener('play', () => {
+        const analyzeAudio = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const averageFrequency = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          // setTranscript(`Average Frequency: ${averageFrequency}`);
+          requestAnimationFrame(analyzeAudio);
+        };
+        analyzeAudio();
+      });
+    }
   };
+  
+
 
   useEffect(() => {
     if (transcript.toLowerCase().includes('astro') && !astroDetected) {
@@ -169,45 +198,19 @@ export default function Home() {
     setEnable(false);
   };
 
+  
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#0a192f] text-[#ccd6f6]">
-      <div className="max-w-md w-full space-y-4">
-        <div className="flex justify-between">
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleStart}
-            disabled={isListening}
-          >
-            Start
-          </Button>
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleStop}
-            disabled={!isListening}
-          >
-            Stop
-          </Button>
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleReset}
-          >
-            Reset
-          </Button>
+    <div className="overflow-x-hidden">
+      
           {enable &&  <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
+            className="fixed top-1/2 right-1/2 transform translate-x-1/2 -translate-y-1/2" 
             onClick={enableAudio}
           >
             Enable Audio
           </Button>}
-         
-        </div>
-        <Textarea
-          className="h-48 p-4 bg-[#112240] text-[#ccd6f6] rounded-md border border-[#64ffda] focus:border-[#64ffda] focus:ring-1 focus:ring-[#64ffda]"
-          placeholder="Transcribed text will appear here..."
-          value={transcript}
-          readOnly
-        />
-      </div>
+        
+      <AZ audioFile={audioFile} counter={counter}/>
     </div>
   );
 }

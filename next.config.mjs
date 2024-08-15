@@ -1,4 +1,13 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+import path from 'path';
 
-export default nextConfig;
+export default {
+  webpack: (config, { isServer }) => {
+    config.module.rules.push({
+      test: /\.glsl$/,
+      use: 'webpack-glsl-loader',
+      include: path.resolve('src/shaders'),
+    });
+
+    return config;
+  },
+};

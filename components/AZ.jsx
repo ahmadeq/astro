@@ -1,194 +1,157 @@
-'use client';
-import 'regenerator-runtime/runtime';
-import React, { useEffect, useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+"use client";
 
-export default function Home() {
-  const { transcript, resetTranscript, listening } = useSpeechRecognition();
-  const [isListening, setIsListening] = useState(true);
-  const [commandTimeout, setCommandTimeout] = useState(null);
-  const [astroDetected, setAstroDetected] = useState(false);
-  const [command , setCommand] = useState("");
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { GUI } from 'dat.gui';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass';
+import vertexShader from '@/src/shaders/vertexShader.glsl';
+import fragmentShader from '@/src/shaders/fragmentShader.glsl';
+
+const AZ = ({ audioFile , counter }) => {
+  const mountRef = useRef(null);
+  const guiRef = useRef(null); // Reference to the GUI instance
 
   useEffect(() => {
-    if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
-      console.error("Browser doesn't support speech recognition.");
-      return;
-    }
-    handleStart(); 
-  }, []);
+    if (typeof window === 'undefined') return; // Ensure this code runs only on the client
 
-  // Function to extract the action and subject from the transcript
-  const extractCommand = (text) => {
-    const lowerText = text.toLowerCase();
-    const words = lowerText.split(/\s+/);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    mountRef.current.appendChild(renderer.domElement);
 
-    const actions = ['run', 'start', 'turn on', 'turn off', 'say', 'execute' , 'stop', 'play'];
-    const subjects = ['level 1', 'level two', 'level three', 'the light', 'test' , "hello", "audio1", "audio2"];
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
 
-    let detectedAction = null;
-    let detectedSubject = null;
+    const params = {
+      red: 1.0,
+      green: 1.0,
+      blue: 1.0,
+      threshold: 0.5,
+      strength: 0.5,
+      radius: 0.8
+    };
 
-    // Find the action
-    for (const action of actions) {
-      if (lowerText.includes(action)) {
-        detectedAction = action;
-        break;
-      }
-    }
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    // Find the subject
-    for (const subject of subjects) {
-      if (lowerText.includes(subject)) {
-        detectedSubject = subject;
-        break;
-      }
-    }
+    const renderScene = new RenderPass(scene, camera);
 
-    return { action: detectedAction, subject: detectedSubject };
-  };
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight));
+    bloomPass.threshold = params.threshold;
+    bloomPass.strength = params.strength;
+    bloomPass.radius = params.radius;
 
-  
-  const playAudio = (fileName) => {
-    const audio = new Audio(`/audio/${fileName}.mp3`);
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
+    const bloomComposer = new EffectComposer(renderer);
+    bloomComposer.addPass(renderScene);
+    bloomComposer.addPass(bloomPass);
+
+    const outputPass = new OutputPass();
+    bloomComposer.addPass(outputPass);
+
+    camera.position.set(0, -2, 14);
+    camera.lookAt(0, 0, 0);
+
+    const uniforms = {
+      u_time: { type: 'f', value: 0.0 },
+      u_frequency: { type: 'f', value: 0.0 },
+      u_red: { type: 'f', value: 1.0 },
+      u_green: { type: 'f', value: 1.0 },
+      u_blue: { type: 'f', value: 1.0 }
+    };
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader,
+      fragmentShader
     });
-  };
 
-  useEffect(() => {
-    if (transcript.toLowerCase().includes('astro') && !astroDetected) {
-      setAstroDetected(true);
+    const geo = new THREE.IcosahedronGeometry(4, 30);
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    mesh.material.wireframe = true;
 
-      if (commandTimeout) {
-        clearTimeout(commandTimeout);
-      }
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
 
-      setCommandTimeout(setTimeout(() => {
-        console.log("I didn't understand the command.");
-        setAstroDetected(false);
-        resetTranscript();
-      }, 3000));
-    
-      
-    } else if (astroDetected) {
-      const { action, subject } = extractCommand(transcript);
-      console.log(transcript)
-      if (action && subject) {
-        console.log(`Action: ${action}, Subject: ${subject}`); // Print the action and subject to the console
-        
-        // Uncomment the appropriate line below to execute the command
-        setCommand(action + " " + subject)
-        console.log(command)
-        if (command === 'turn on the light') {
-          console.log("turn on the light")
-          playAudio("sorry");
-          executeCommand(`http://192.168.1.12/on`);
-        } else if (command === 'turn off the light') {
-          executeCommand(`http://192.168.1.12/off`);
-        } else if (command === 'run level 1' || command === 'start level one') {
-          executeCommand(`http://192.168.1.12/levelOne`);
-        } else if (command === 'run level two' || command === 'start level two') {
-          executeCommand(`http://192.168.1.12/levelTwo`);
-        } else if (command === 'run level three' || command === 'start level three') {
-          executeCommand(`http://192.168.1.12/levelThree`);
-        } else if (command === 'execute test' || command === 'run test') {
-          executeCommand(`http://192.168.1.12/test`);
-        } else if (command === 'say hello') {
-          executeCommand(`http://192.168.1.12/hello`);
-        } else if (command === 'stop') {
-          executeCommand(`http://192.168.1.12/stop`);
-        } else if (command.startsWith('play')) {
-          const audioFile = command.split(' ')[1];
-          playAudio(audioFile);
-        }
+    const sound = new THREE.Audio(listener);
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load(`/audio/${audioFile}.mp3`, function (buffer) {
+      sound.setBuffer(buffer);
+      sound.play();  // Autoplay the audio
+    });
 
-        setAstroDetected(false);
-        clearTimeout(commandTimeout);
-        resetTranscript();
-      }
+    const analyser = new THREE.AudioAnalyser(sound, 32);
+
+    // Create the GUI only if it doesn't already exist
+    if (!guiRef.current) {
+      const gui = new GUI();
+      guiRef.current = gui;
+
+      const colorsFolder = gui.addFolder('Colors');
+      colorsFolder.add(params, 'red', 0, 1).onChange(function (value) {
+        uniforms.u_red.value = Number(value);
+      });
+      colorsFolder.add(params, 'green', 0, 1).onChange(function (value) {
+        uniforms.u_green.value = Number(value);
+      });
+      colorsFolder.add(params, 'blue', 0, 1).onChange(function (value) {
+        uniforms.u_blue.value = Number(value);
+      });
+
+      const bloomFolder = gui.addFolder('Bloom');
+      bloomFolder.add(params, 'threshold', 0, 1).onChange(function (value) {
+        bloomPass.threshold = Number(value);
+      });
+      bloomFolder.add(params, 'strength', 0, 3).onChange(function (value) {
+        bloomPass.strength = Number(value);
+      });
+      bloomFolder.add(params, 'radius', 0, 1).onChange(function (value) {
+        bloomPass.radius = Number(value);
+      });
     }
-  }, [transcript, resetTranscript, astroDetected, commandTimeout]);
 
-  const executeCommand = (url) => {
-    fetch(url)
-      .then(response => {
-        if (!response.ok) {
-          console.error('Fetch failed:', response.statusText);
-          return null;
-        }
-        return response.text();
-      })
-      .then(data => {
-        if (data !== null) {
-          console.log(data);
-        }
-      })
-      .catch(error => {
-        console.error('Error caught:', error);
-      })
-      .finally(() => {
-        resetTranscript();
-        if (commandTimeout) {
-          clearTimeout(commandTimeout);
-        }
-      });
-  };
+    let mouseX = 0;
+    let mouseY = 0;
+    document.addEventListener('mousemove', function (e) {
+      let windowHalfX = window.innerWidth / 2;
+      let windowHalfY = window.innerHeight / 2;
+      mouseX = (e.clientX - windowHalfX) / 100;
+      mouseY = (e.clientY - windowHalfY) / 100;
+    });
 
-  const handleStart = () => {
-    setIsListening(true);
-    SpeechRecognition.startListening({ continuous: true })
-      .catch((error) => {
-        console.error("Error starting speech recognition:", error);
-      });
-  };
+    const clock = new THREE.Clock();
+    function animate() {
+      camera.position.x += (mouseX - camera.position.x) * 0.05;
+      camera.position.y += (-mouseY - camera.position.y) * 0.5;
+      camera.lookAt(scene.position);
+      uniforms.u_time.value = clock.getElapsedTime();
+      uniforms.u_frequency.value = analyser.getAverageFrequency();
+      bloomComposer.render();
+      requestAnimationFrame(animate);
+    }
+    animate();
 
-  const handleStop = () => {
-    setIsListening(false);
-    SpeechRecognition.stopListening()
-      .catch((error) => {
-        console.error("Error stopping speech recognition:", error);
-      });
-  };
+    window.addEventListener('resize', function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      bloomComposer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-  const handleReset = () => {
-    resetTranscript();
-  };
+    return () => {
+      if (mountRef.current) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+    };
+  }, [audioFile , counter]);
 
-  return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#0a192f] text-[#ccd6f6]">
-      <div className="max-w-md w-full space-y-4">
-        <div className="flex justify-between">
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleStart}
-            disabled={isListening}
-          >
-            Start
-          </Button>
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleStop}
-            disabled={!isListening}
-          >
-            Stop
-          </Button>
-          <Button 
-            className="bg-[#64ffda]/10 text-[#64ffda] hover:bg-[#64ffda]/20 border-[#64ffda]" 
-            onClick={handleReset}
-          >
-            Reset
-          </Button>
-        </div>
-        <Textarea
-          className="h-48 p-4 bg-[#112240] text-[#ccd6f6] rounded-md border border-[#64ffda] focus:border-[#64ffda] focus:ring-1 focus:ring-[#64ffda]"
-          placeholder="Transcribed text will appear here..."
-          value={transcript}
-          readOnly
-        />
-      </div>
-    </div>
-  );
-}
+  return <div ref={mountRef} className="w-full h-screen"></div>;
+};
+
+export default AZ;
