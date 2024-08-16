@@ -26,11 +26,12 @@ export default function Home() {
 
   // Function to extract the action and subject from the transcript
   const extractCommand = (text) => {
+
     const lowerText = text.toLowerCase();
     const words = lowerText.split(/\s+/);
 
     const actions = ['run', 'start', 'turn on', 'turn off', 'say', 'execute' , 'stop', 'play'];
-    const subjects = ['level 1', 'level two', 'level three', 'the light', 'test' , "hello", "audio1", "audio2"];
+    const subjects = ['level 1','level one' ,'level two', 'level three', 'the light', 'test' , "hello", "audio1", "audio2",'the system' ,'level 2' , 'level 3'];
 
     let detectedAction = null;
     let detectedSubject = null;
@@ -89,9 +90,9 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (transcript.toLowerCase().includes('astro') && !astroDetected) {
+    console.log(`Transcript: ${transcript}`);
+    if (['going', 'quick', 'notch'].some(word => transcript.toLowerCase().includes(word)) && !astroDetected) {   
       setAstroDetected(true);
-
       if (commandTimeout) {
         clearTimeout(commandTimeout);
       }
@@ -100,7 +101,7 @@ export default function Home() {
         console.log("I didn't understand the command.");
         setAstroDetected(false);
         resetTranscript();
-      }, 3000));
+      }, 50));
     
       
     } else if (astroDetected) {
@@ -118,21 +119,25 @@ export default function Home() {
         } else if (command === 'turn off the light') {
           playAudio("sorry");
           executeCommand(`http://192.168.1.12/off`);
-        } else if (command === 'run level 1' || command === 'start level one') {
+        } else if (command === 'run level 1' || command === 'start level one' || command === 'start level 1' || command === 'run level one'  ) {
           executeCommand(`http://192.168.1.12/levelOne`);
-        } else if (command === 'run level two' || command === 'start level two') {
+        } else if (command === 'run level two' || command === 'start level two' || command === 'run level 2' || command === 'start level 2') {
           executeCommand(`http://192.168.1.12/levelTwo`);
-        } else if (command === 'run level three' || command === 'start level three') {
+        } else if (command === 'run level three' || command === 'start level three' || command === 'run level 3' || command === 'start level 3') {
           executeCommand(`http://192.168.1.12/levelThree`);
         } else if (command === 'execute test' || command === 'run test') {
           executeCommand(`http://192.168.1.12/test`);
         } else if (command === 'say hello') {
           executeCommand(`http://192.168.1.12/hello`);
-        } else if (command === 'stop') {
+        } else if (command === 'stop the system') {
           executeCommand(`http://192.168.1.12/stop`);
         } else if (command.startsWith('play')) {
           const audioFile = command.split(' ')[1];
           playAudio(audioFile);
+        }
+        else {
+          playAudio("sorry");
+          console.log("I didn't understand the command.");
         }
 
         setAstroDetected(false);
