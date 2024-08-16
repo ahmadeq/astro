@@ -1,19 +1,11 @@
 'use client';
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import AZ from '@/components/AZ';
-
+import { BackgroundBeams } from '@/components/ui/background-beams';
 export default function Home() {
-  const [audioFile, setAudioFile] = useState(null);
-  const [counter, setCounter] = useState(0);
 
-  const playAudio = (fileName) => {
-    setAudioFile(fileName);
-    setCounter(counter + 1);
-    if (typeof window !== 'undefined') { // Check if we're in the browser
-      const audio = new Audio(`/audio/${fileName}.mp3`);
-    }
-  };
+  const [image, setImage] = useState(null);
+
 
   const executeCommand = (url) => {
     fetch(url)
@@ -35,42 +27,35 @@ export default function Home() {
   };
 
   return (
-    <div className="overflow-x-hidden">
-      <AZ audioFile={audioFile} counter={counter}/>
-      
-      <div className="button-container fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 flex gap-2">        <Button onClick={() => {playAudio("sorry"); executeCommand(`http://192.168.1.12/on`);}}>
-          Turn On Light
+    <div className="grid grid-cols-3 h-screen">
+      <div className="flex flex-col h-screen items-center justify-center gap-2 col-span-1 z-50">
+        <Button onClick={() => {executeCommand(`http://192.168.1.12/levelOne`) 
+          setImage("Figure_1")} }>
+          Level 1
         </Button>
-        <Button onClick={() => {playAudio("sorry"); executeCommand(`http://192.168.1.12/off`);}}>
-          Turn Off Light
+        <Button onClick={() => {executeCommand(`http://192.168.1.12/levelOne`) 
+          setImage("Figure_2")} }>
+          Level 2
         </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/levelOne`)}>
-          Run Level 1
+        <Button onClick={() => {executeCommand(`http://192.168.1.12/levelTwo`) 
+          setImage("Figure_3")} }>
+          Level 3
         </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/levelTwo`)}>
-          Run Level 2
-        </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/levelThree`)}>
-          Run Level 3
-        </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/test`)}>
-          Execute Test
-        </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/hello`)}>
-          Say Hello
-        </Button>
-        <Button onClick={() => executeCommand(`http://192.168.1.12/stop`)}>
+        <Button onClick={() => {executeCommand(`http://192.168.1.12/levelThree`) 
+          setImage(null)} }>
           Stop System
         </Button>
-        <Button onClick={() => playAudio("audio1")}>
-          Play Audio 1
-        </Button>
-        <Button onClick={() => playAudio("audio2")}>
-          Play Audio 2
-        </Button>
+     
       </div>
 
-      
+      <div className='col-span-2'>
+        <div className='flex flex-col h-screen items-center justify-center z-50 '>
+          <img src={`/${image}.png`} alt="hero" className="w-3/4 z-50" />
+        </div>
+      </div>
+     <div className='z-10'>
+      <BackgroundBeams/>
+      </div>
     </div>
   );
 }
